@@ -1,0 +1,14 @@
+{
+  "name": "osayi-claude",
+  "description": "Osayi's Claude Code setup for Go API projects",
+  "owner": {
+    "name": "Osayi Akoko"
+  },
+  "plugins": [
+    {
+      "name": "go-api",
+      "source": "./plugins/go-api",
+      "description": "Skills for scaffolding, extending and reviewing Go HTTP APIs, plus gofmt on every edit"
+    }
+  ]
+}
