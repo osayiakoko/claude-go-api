@@ -8,9 +8,10 @@ for scaffolding, adding resources and reviewing code.
 | Path | What it does | How it loads |
 |---|---|---|
 | `rules/go-api.md` | Always-on Go API conventions (layout, errors, HTTP, persistence, testing) | Symlinked into `~/.claude/rules/` by `install.sh`, so every session reads it |
-| `plugins/go-api/skills/new-project` | `/go-api:new-project lite\|full <module> <description>` — scaffold a flat (interview) or hexagonal (real) API | Plugin |
+| `plugins/go-api/skills/new-project` | `/go-api:new-project lite\|full <module> <description>` — scaffold a flat (interview: slog, in-memory, Makefile) or hexagonal (real: Postgres, zerolog, Docker, CI) API | Plugin |
 | `plugins/go-api/skills/add-resource` | `/go-api:add-resource <name> <fields>` — domain → ports → service → repos → migration → DTO → handler → wiring → tests | Plugin (Claude also picks it up on its own when you ask for a new resource) |
 | `plugins/go-api/skills/help` | `/go-api:help` — list every command with examples | Plugin |
+| `plugins/go-api/skills/infra` | `/go-api:infra <topic>` — infrastructure patterns with reference code (`references/*.md`) | Plugin (loaded only when used) |
 | `plugins/go-api/skills/review` | `/go-api:review [path\|range]` — review against the conventions | Plugin |
 | `plugins/go-api/hooks` | Runs `goimports`/`gofmt` on every `.go` file Claude writes or edits | Plugin |
 
@@ -27,6 +28,7 @@ Run `/go-api:help` inside Claude Code to print this list.
 | `/go-api:new-project [lite\|full] [module-path] [description]` | Scaffold a new Go API | You only |
 | `/go-api:add-resource [name] [fields / behaviour]` | Add an entity through every layer, with tests | You, or Claude when you ask for a new resource |
 | `/go-api:review [path \| package \| git range]` | Review Go changes against the conventions | You, or Claude when you ask for a review |
+| `/go-api:infra [topic] [instructions]` | Add/upgrade postgres, logger, cache, jobs, security, observability, http-kit, external | You, or Claude when you ask for any of these |
 
 Short forms (`/new-project`, `/add-resource`, `/review`) work when no other command has the
 same name. The formatting hook has no command; it runs after every `.go` edit.
@@ -38,12 +40,24 @@ same name. The formatting hook has no command; it runs after every `.go` edit.
 /go-api:new-project lite example.com/wallet "wallet API: create wallet, credit, debit, balance; no overdrafts"
 /go-api:new-project lite example.com/shortener "URL shortener with expiry and hit counts"
 /go-api:new-project full github.com/codicra/invoicing "SME e-invoicing API with customers, invoices and payments"
+/go-api:new-project lite example.com/wallet "wallet API with Postgres and zerolog"   # lite + extras
 /go-api:new-project "rate limiter service"          # Claude picks lite for small tasks, otherwise asks
 
 # Add a resource to an existing API
 /go-api:add-resource product "name, price (decimal), status active|archived; owned by account"
 /go-api:add-resource savings-goal "target amount, saved amount, deadline; owner-only access"
 /go-api:add-resource webhook-subscription "url, secret, events []string; HMAC-signed delivery with retries"
+
+# Infrastructure (topics: postgres, logger, cache, jobs, security, observability, http-kit, external, all)
+/go-api:infra postgres                              # swap the in-memory store for Postgres
+/go-api:infra logger                                # replace slog with zerolog in a lite project
+/go-api:infra cache "cache users and plans for 5 minutes"
+/go-api:infra jobs "monthly statement job that must run exactly once per month"
+/go-api:infra jobs "send a receipt SMS after each repayment using River"
+/go-api:infra jobs "loan disbursement workflow with Temporal"
+/go-api:infra security "JWT access/refresh tokens, API key for client apps, rate limit login"
+/go-api:infra external "Paystack payments with webhook verification"
+/go-api:infra "add zerolog and Postgres"
 
 # Review
 /go-api:review                                      # uncommitted changes

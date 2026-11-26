@@ -57,16 +57,18 @@ migrations/postgres/             # golang-migrate, NNNNNN_name.{up,down}.sql
 ## Errors
 
 - Domain errors are typed structs in `core/shared/domain/errors.go`: `ErrNotFound{Resource}`,
-  `ErrDuplicate{Resource, Field}`, `ErrValidation{Field, Message}`, `ErrUnauthorised{Reason}`,
-  `ErrInternal{Cause}` (with `Unwrap`). Return them by pointer.
+  `ErrDuplicate{Resource, Field}`, `ErrConflict{Resource}` (optimistic-lock/version miss),
+  `ErrValidation{Field, Message}`, `ErrUnauthorised{Reason}`, `ErrInternal{Cause}` (with
+  `Unwrap`). Return them by pointer.
 - Repositories translate storage errors into domain errors (`pgx.ErrNoRows` → `ErrNotFound`,
   unique violation `23505` → `ErrDuplicate`, `RowsAffected()==0` on update/delete → `ErrNotFound`).
 - Services return domain errors as-is; wrap unexpected infrastructure errors with context:
   `fmt.Errorf("create order: %w", err)`. Never discard an error; `_ =` only with a comment.
 - Check with `errors.As` / `errors.Is`, never string comparison.
 - Handlers never pick status codes for domain errors themselves — call
-  `response.HandleError(w, r, err)`, the single mapping point (NotFound→404, Duplicate→409,
-  Validation→400, Unauthorised→403, default→500 with a generic message, real error logged).
+  `response.HandleError(w, r, err)`, the single mapping point (NotFound→404,
+  Duplicate/Conflict→409, Validation→400, Unauthorised→403, default→500 with a generic message,
+  real error logged).
 - No `panic` outside `main` and truly impossible states.
 
 ## HTTP layer
@@ -75,8 +77,9 @@ migrations/postgres/             # golang-migrate, NNNNNN_name.{up,down}.sql
   logger, timeout, CORS, metrics. Routes versioned under `/v1`.
 - Handler struct per resource holding service ports + `*validator.Validator`; constructor `NewXHandler`.
 - Handler shape, in this order: parse path params (`uuid.Parse(chi.URLParam(r, "id"))` → 400)
-  → `helpers.ReadJSON` (1MB cap, `DisallowUnknownFields`, single JSON value) → validate
-  (`go-playground/validator` tags; failures → `response.FailedValidation`, 422) → auth context
+  → `ReadJSON` (1MB cap, `DisallowUnknownFields`, single JSON value) → validate
+  (`if errs := h.validator.Validate(input); errs != nil { response.FailedValidation(...) }`, 422 —
+  the validator is shared, so it returns errors and stores nothing) → auth context
   (`auth.GetUserID(r)`) → call service with `r.Context()` → map to DTO → respond.
 - Request/response DTOs live in `adapters/primary/http/dto`, with `ToXResponse(*domain.X)`
   mappers. Never return domain structs directly. JSON keys are camelCase.
@@ -103,11 +106,35 @@ migrations/postgres/             # golang-migrate, NNNNNN_name.{up,down}.sql
 - `ctx context.Context` is the first parameter of anything that does I/O. Never store it in a struct.
 - Request-scoped logger via `logger.FromCtx(ctx)`; structured fields as `map[string]any`. Never
   log secrets, tokens, OTPs or full card/account numbers.
+- Anything shared across requests (validator, handlers, services, caches) is either stateless
+  or guarded by a mutex — never store per-request data on a shared struct.
 - Every goroutine has an owner and an exit: background workers `select` on a shared ctx that is
   cancelled on shutdown and are tracked by the server's WaitGroup.
 - Server: explicit Read/Write/Idle timeouts; graceful shutdown on SIGINT/SIGTERM (drain
   in-flight requests, cancel workers, wait).
 - Config only from env (`.env` for local via godotenv), loaded once into a typed `Config`.
+- Compare secrets, signatures and hashes with `subtle.ConstantTimeCompare` / `hmac.Equal`, never `==`.
+- Every outbound `http.Client` has a timeout; every outbound request carries ctx.
+
+## Infrastructure (details: `/go-api:infra <topic>`)
+
+- **Logger:** lite → `log/slog`. Full → zerolog behind an app `Logger` interface,
+  `logger.FromCtx(ctx)` for request-scoped logs, console output only in a dev terminal, JSON
+  elsewhere. Redact secrets/PII recursively in request logs in every environment.
+- **Postgres:** `pgxpool` with explicit limits, ping on start, close on shutdown;
+  golang-migrate up/down pairs; a migrate step before the API in docker-compose.
+- **Cache:** `Store` interface + repository decorators; evict on write, TTL as safety net;
+  in-memory only for single-instance, Redis otherwise; never cache balances/payment state.
+- **Jobs:** ticker workers for idempotent housekeeping; `RunOnce` + `scheduled_jobs` (with a
+  lease so crashed runs are reclaimed) for once-per-slot schedules; River for queued work
+  enqueued in the same transaction; Temporal for long multi-step processes.
+- **Security:** typed JWTs (access/refresh) with a session-version claim; API keys stored as
+  SHA-256; fail-closed admin secret; per-client rate limits (don't trust `X-Forwarded-For`
+  unless behind your own proxy).
+- **Observability:** one Prometheus registry passed through the container; metric labels use
+  route patterns, never raw paths or IDs; `/health` (liveness) and `/ready` (DB ping).
+- **External providers:** port in core, adapter per vendor, mock chosen by env; webhooks are
+  signature-checked, deduplicated by event ID, acknowledged fast and processed async.
 
 ## Testing
 

@@ -8,7 +8,7 @@
     {
       "name": "go-api",
       "source": "./plugins/go-api",
-      "description": "Skills for scaffolding, extending and reviewing Go HTTP APIs, plus gofmt on every edit"
+      "description": "Skills for scaffolding, extending, reviewing and adding infrastructure to Go HTTP APIs, plus gofmt on every edit"
     }
   ]
 }

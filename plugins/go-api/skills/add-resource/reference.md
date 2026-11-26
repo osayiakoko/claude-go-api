@@ -1,6 +1,7 @@
 # Canonical shapes (example resource: `product`)
 
-Replace `example.com/app` with the module path from `go.mod`.
+Replace `example.com/app` with the module path from `go.mod`. Helper package names here
+(`httpx`, `response`, `validator`, `auth`) are placeholders — use the project's real ones.
 
 ## Domain
 
@@ -207,13 +208,12 @@ func ToProductResponse(p *productdomain.Product) ProductResponse {
 // @Router    /products [post]
 func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	var input dto.CreateProductRequest
-	if err := helpers.ReadJSON(w, r, &input); err != nil {
+	if err := httpx.ReadJSON(w, r, &input); err != nil {
 		response.BadRequest(w, r, err)
 		return
 	}
-	h.validator.Validate(input)
-	if !h.validator.Valid() {
-		response.FailedValidation(w, r, h.validator.Errors)
+	if errs := h.validator.Validate(input); errs != nil {
+		response.FailedValidation(w, r, errs)
 		return
 	}
 

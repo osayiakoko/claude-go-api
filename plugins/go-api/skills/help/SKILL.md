@@ -16,6 +16,7 @@ $ARGUMENTS, answering that question.
 | `/go-api:new-project [lite\|full] [module-path] [description]` | Scaffold a new Go API |
 | `/go-api:add-resource [name] [fields / behaviour]` | Add an entity through every layer, with tests |
 | `/go-api:review [path \| package \| git range]` | Review Go changes against the conventions |
+| `/go-api:infra [topic] [instructions]` | Add or upgrade infrastructure: postgres, logger, cache, jobs, security, observability, http-kit, external |
 
 The short forms (`/new-project`, `/add-resource`, `/review`) also work when no other
 command uses the same name. Formatting runs automatically: every `.go` file Claude writes or
@@ -27,8 +28,12 @@ edits is passed through `goimports` (or `gofmt` if goimports isn't installed).
 /go-api:new-project lite example.com/wallet "wallet API: create wallet, credit, debit, balance; no overdrafts"
 /go-api:new-project lite example.com/shortener "URL shortener with expiry and hit counts"
 /go-api:new-project full github.com/codicra/invoicing "SME e-invoicing API with customers, invoices and payments"
+/go-api:new-project lite example.com/wallet "wallet API with Postgres and zerolog"   # lite + extras
 /go-api:new-project "rate limiter service"        # mode/module omitted: Claude picks lite for small tasks, else asks
 ```
+
+`lite` = flat files, in-memory store, `slog`, Makefile. `full` = hexagonal layout, Postgres,
+zerolog, metrics, Docker, CI, full Makefile.
 
 Only you can start this one — Claude never scaffolds a project on its own.
 
@@ -53,6 +58,27 @@ Claude may also use this automatically when you say things like "add a products 
 ```
 
 Claude may also use this automatically when you ask it to review Go code.
+
+## /go-api:infra
+
+Topics: `postgres` · `logger` · `cache` · `jobs` · `security` · `observability` · `http-kit` · `external` · `all`.
+A plain-English request works too — Claude maps it to the right topic.
+
+```
+/go-api:infra postgres                         # swap the in-memory store for Postgres (keeps memory store for tests)
+/go-api:infra logger                           # replace slog with zerolog in a lite project
+/go-api:infra cache "cache users and plans for 5 minutes"
+/go-api:infra jobs "nightly OTP cleanup and a monthly statement job that must run once per month"
+/go-api:infra jobs "send a receipt SMS after each repayment using River, enqueued in the same transaction"
+/go-api:infra jobs "loan disbursement workflow with Temporal: transfer, activate loan, create schedule"
+/go-api:infra security "JWT access/refresh tokens, API key for client apps, rate limit login to 5/min"
+/go-api:infra observability
+/go-api:infra http-kit "add pagination and sortable list endpoints"
+/go-api:infra external "Paystack payments with webhook verification"
+/go-api:infra "add zerolog and Postgres"       # several topics at once
+```
+
+Claude may also use this automatically when you ask for any of these things.
 
 ## Managing the plugin
 
