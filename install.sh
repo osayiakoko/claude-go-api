@@ -20,5 +20,5 @@ done
 
 echo
 echo "Next, inside Claude Code:"
-echo "  /plugin marketplace add <your-github-username>/claude-go-api"
+echo "  /plugin marketplace add osayiakoko/claude-go-api"
 echo "  /plugin install go-api@osayi-claude"

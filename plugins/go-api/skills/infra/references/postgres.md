@@ -1,6 +1,11 @@
 # Postgres (pgx/v5, raw SQL)
 
 Dependencies: `github.com/jackc/pgx/v5`, migrations via the `golang-migrate` CLI.
+Repository code: in **lite** projects (exercises, interviews, prototypes) use hand-written pgx
+queries with scan helpers — no sqlc or testcontainers unless the user asks for them. In
+**full** projects prefer **sqlc** to generate the query/scan code from your SQL (setup and the
+repository pattern in `packages.md`) and **testcontainers-go** for integration tests. The pool,
+`getQuerier`, `Transactor` and migrations below stay the same either way.
 
 ## Pool — `internal/infrastructure/database/postgres.go`
 
@@ -176,6 +181,9 @@ and DB-less dev use it), add the postgres implementation behind the same interfa
 an integration test.
 
 ## Integration tests
+
+Preferred setup: start Postgres with testcontainers-go and run the real migrations in
+`TestMain` — see `packages.md`. The cleanup helper below works with either setup.
 
 ```go
 //go:build integration

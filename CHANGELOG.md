@@ -9,8 +9,44 @@ The always-on rules file (`rules/go-api.md`) isn't versioned separately — it's
 under the plugin version they shipped with, marked **Rules**.
 
 To release: update this file, bump `version` in `plugins/go-api/.claude-plugin/plugin.json`,
-commit, tag (`git tag go-api-vX.Y.Z`), push with `--tags`, then run
+commit, then `git tag -a go-api-vX.Y.Z -m "go-api X.Y.Z"` and `git push --follow-tags`
+(`--follow-tags` only pushes **annotated** tags), then run
 `/plugin marketplace update osayi-claude` and `/reload-plugins`.
+
+## [1.5.0] — 2026-11-26
+
+Preferred packages, from a review of what TrakDip hand-rolls.
+
+### Added
+- `/go-api:infra packages` (`references/packages.md`): when and how to adopt
+  - **sqlc** — `sqlc.yaml` reading the golang-migrate directory, uuid/decimal overrides,
+    repositories mapping generated rows ↔ domain while keeping `getQuerier` transactions,
+    `sqlc diff`/`sqlc vet` in CI;
+  - **testcontainers-go** — `TestMain` that starts Postgres (or uses `TEST_DATABASE_URL`),
+    runs the real migrations, and three isolation strategies (DELETE, tx-per-test,
+    Snapshot/Restore);
+  - **caarlos0/env** — typed config with defaults and `required`, failing startup on bad values;
+  - **go-chi/httprate** — keyed on a trusted client IP from chi's `ClientIPFrom*`
+    (replacing `RealIP`), per-user/per-endpoint limits, per-phone OTP limiter, Redis backend;
+  - **go-chi/cors**.
+
+### Changed
+- **Rules:** new "Preferred packages" section; "don't hand-roll what a well-known package
+  does well"; security line keyed on a trusted client IP; integration tests on
+  testcontainers-go or `TEST_DATABASE_URL`.
+- `full` scaffolds use sqlc, testcontainers-go, caarlos0/env, httprate and go-chi/cors; the
+  Makefile gains `sqlc` and `generate`; CI runs `sqlc diff`.
+- `add-resource` uses sqlc when the project has `sqlc.yaml`.
+- `lite` projects stay on hand-written pgx: `/go-api:infra` won't add sqlc, testcontainers or
+  River to a lite project unless asked (keeps interview/exercise setup fast).
+- `postgres.md` and `security.md` point to the preferred packages; the hand-rolled rate
+  limiter is kept only as a no-dependency fallback; `RealIP` replaced with `ClientIPFrom*`.
+- `/go-api:help` and README list the `packages` topic with examples.
+
+### Fixed
+- Release instructions used lightweight tags with `git push --follow-tags`, which doesn't push
+  them (the 1.4.0 tag never reached GitHub). They now use `git tag -a`.
+- Changelog/README links use the real repository owner (`osayiakoko`).
 
 ## [1.4.0] — 2026-11-26
 
@@ -123,8 +159,9 @@ Background-job awareness, from a review of TrakDip's workers.
   - Hook: `goimports`/`gofmt` on every `.go` file Claude writes or edits.
 - `install.sh` — links the rules into `~/.claude/rules/`.
 
-[1.4.0]: https://github.com/<your-github-username>/claude-go-api/compare/go-api-v1.3.0...go-api-v1.4.0
-[1.3.0]: https://github.com/<your-github-username>/claude-go-api/compare/go-api-v1.2.0...go-api-v1.3.0
-[1.2.0]: https://github.com/<your-github-username>/claude-go-api/compare/go-api-v1.1.0...go-api-v1.2.0
-[1.1.0]: https://github.com/<your-github-username>/claude-go-api/compare/go-api-v1.0.0...go-api-v1.1.0
-[1.0.0]: https://github.com/<your-github-username>/claude-go-api/releases/tag/go-api-v1.0.0
+[1.5.0]: https://github.com/osayiakoko/claude-go-api/compare/go-api-v1.4.0...go-api-v1.5.0
+[1.4.0]: https://github.com/osayiakoko/claude-go-api/compare/go-api-v1.3.0...go-api-v1.4.0
+[1.3.0]: https://github.com/osayiakoko/claude-go-api/compare/go-api-v1.2.0...go-api-v1.3.0
+[1.2.0]: https://github.com/osayiakoko/claude-go-api/compare/go-api-v1.1.0...go-api-v1.2.0
+[1.1.0]: https://github.com/osayiakoko/claude-go-api/compare/go-api-v1.0.0...go-api-v1.1.0
+[1.0.0]: https://github.com/osayiakoko/claude-go-api/releases/tag/go-api-v1.0.0

@@ -16,7 +16,7 @@ $ARGUMENTS, answering that question.
 | `/go-api:new-project [lite\|full] [module-path] [description]` | Scaffold a new Go API |
 | `/go-api:add-resource [name] [fields / behaviour]` | Add an entity through every layer, with tests |
 | `/go-api:review [path \| package \| git range]` | Review Go changes against the conventions |
-| `/go-api:infra [topic] [instructions]` | Add or upgrade infrastructure: postgres, logger, cache, jobs, security, observability, http-kit, external, resilience |
+| `/go-api:infra [topic] [instructions]` | Add or upgrade infrastructure: postgres, logger, cache, jobs, security, observability, http-kit, external, resilience, packages |
 
 The short forms (`/new-project`, `/add-resource`, `/review`) also work when no other
 command uses the same name. Formatting runs automatically: every `.go` file Claude writes or
@@ -61,7 +61,7 @@ Claude may also use this automatically when you ask it to review Go code.
 
 ## /go-api:infra
 
-Topics: `postgres` · `logger` · `cache` · `jobs` · `security` · `observability` · `http-kit` · `external` · `resilience` · `all`.
+Topics: `postgres` · `logger` · `cache` · `jobs` · `security` · `observability` · `http-kit` · `external` · `resilience` · `packages` · `all`.
 A plain-English request works too — Claude maps it to the right topic.
 
 ```
@@ -78,6 +78,10 @@ A plain-English request works too — Claude maps it to the right topic.
 /go-api:infra resilience "idempotency keys on POST /transactions and /debts/repay"
 /go-api:infra resilience "timeouts, retries and a circuit breaker around WhatsApp and SMS"
 /go-api:infra resilience "make payment webhook confirmation atomic"
+/go-api:infra packages "move the category repository to sqlc"
+/go-api:infra packages "run integration tests with testcontainers instead of TEST_DATABASE_URL"
+/go-api:infra packages "replace the config loader with caarlos0/env"
+/go-api:infra packages "replace the rate limiter with httprate behind Cloudflare"
 /go-api:infra "add zerolog and Postgres"       # several topics at once
 ```
 
@@ -88,6 +92,7 @@ Claude may also use this automatically when you ask for any of these things.
 ```
 /plugin                                   # see installed plugins, enable/disable
 /plugin marketplace update osayi-claude   # pull the latest version after pushing changes
+/plugin                                   # → Installed → go-api shows the installed version
 /reload-plugins                           # apply changes without restarting the session
 /context                                  # confirm the Go rules file is loaded
 ```

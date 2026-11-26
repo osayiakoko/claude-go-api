@@ -26,8 +26,11 @@ shapes are in `reference.md`, next to this SKILL.md — read it and use them as 
 5. **Migration** — `make migrate-create name=create_<res>s` (or the repo's equivalent);
    write both up and down. UUID PK, FKs with explicit ON DELETE, `created_at`/`updated_at`,
    indexes for the lookups the repo performs.
-6. **Postgres repo** `adapters/secondary/persistence/postgres/<res>_repository.go` — raw SQL,
-   `getQuerier(ctx, r.pool)` in EVERY method, scan helpers, error translation.
+6. **Postgres repo** `adapters/secondary/persistence/postgres/<res>_repository.go` —
+   if the project has `sqlc.yaml`: add `queries/<res>.sql`, run `sqlc generate`, and map
+   generated rows ↔ domain in the repo (`sqlcdb.New(getQuerier(ctx, r.pool))`, see the infra
+   `packages.md` reference). Otherwise hand-written SQL with scan helpers. Either way:
+   `getQuerier` in EVERY method and error translation to domain errors.
 7. **DTOs** `adapters/primary/http/dto/<res>_dto.go` — Create/Update request structs with
    `validate` tags, `<Res>Response`, `To<Res>Response` mapper. camelCase JSON.
 8. **Handler** `adapters/primary/http/handlers/<res>_handler.go` — standard handler shape,
@@ -37,7 +40,8 @@ shapes are in `reference.md`, next to this SKILL.md — read it and use them as 
     `services.go`, handler in `handlers.go`.
 11. **Tests** — service tests against the memory repo (happy path, not found, duplicate,
     unauthorised/ownership, validation edge cases); handler tests with httptest; integration
-    test for the postgres repo behind `//go:build integration`.
+    test for the postgres repo behind `//go:build integration` (testcontainers-go if the
+   project uses it).
 12. **Verify** — `gofmt -l .` empty, `go vet ./...`, `go test -race ./...`, `make swagger` if
     the repo uses swag. Report results.
 

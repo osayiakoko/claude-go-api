@@ -1,7 +1,7 @@
 ---
 name: infra
-description: Add or upgrade infrastructure in a Go API — Postgres (pgxpool, transactions, migrations), zerolog logger, caching, background jobs (tickers, RunOnce, River, Temporal), JWT/API-key auth and rate limiting, Prometheus metrics, HTTP helpers (response envelope, pagination, validation), external provider integrations, and resilience (timeouts, idempotency keys, retries, circuit breakers, bulkheads). Use when asked to set up, add, switch to or improve any of these.
-argument-hint: "[postgres|logger|cache|jobs|security|observability|http-kit|external|resilience|all] [extra instructions]"
+description: Add or upgrade infrastructure in a Go API — Postgres (pgxpool, transactions, migrations), zerolog logger, caching, background jobs (tickers, RunOnce, River, Temporal), JWT/API-key auth and rate limiting, Prometheus metrics, HTTP helpers (response envelope, pagination, validation), external provider integrations, resilience (timeouts, idempotency keys, retries, circuit breakers, bulkheads), and adopting preferred libraries (sqlc, testcontainers-go, caarlos0/env, httprate, go-chi/cors). Use when asked to set up, add, switch to or improve any of these.
+argument-hint: "[postgres|logger|cache|jobs|security|observability|http-kit|external|resilience|packages|all] [extra instructions]"
 ---
 
 Task: $ARGUMENTS
@@ -21,6 +21,7 @@ the task needs (they are long):
 | observability | `references/observability.md` | Prometheus registry, HTTP/worker/external metrics, health, expvar |
 | http-kit | `references/http-kit.md` | response envelope + HandleError, pagination, ReadJSON/ReadQuery, validator wrapper, phone + money formatting |
 | external | `references/external.md` | third-party provider ports, real vs mock by env, HTTP client timeouts, webhooks (signature + dedup) |
+| packages | `references/packages.md` | preferred libraries and how to adopt them: sqlc, testcontainers-go, caarlos0/env, go-chi/httprate (trusted client IP), go-chi/cors |
 | resilience | `references/resilience.md` | timeouts (HTTP, server, Postgres, workers), idempotency keys for POSTs, atomic check-then-act, retries with backoff + jitter, circuit breakers, bulkheads, load shedding, graceful degradation, singleflight |
 
 If the argument is a phrase rather than a topic name ("add zerolog", "switch to postgres",
@@ -31,7 +32,8 @@ If the argument is a phrase rather than a topic name ("add zerolog", "switch to 
 - Read the project's `go.mod`, CLAUDE.md and existing layout first.
 - **Flat (lite) project:** keep it flat — put the code in a few files at the root or one
   small package (e.g. `logger.go`, `db.go`, `auth.go`) instead of creating the full
-  `internal/...` tree. Same patterns, fewer folders.
+  `internal/...` tree. Same patterns, fewer folders. Don't add tooling that needs extra
+  installs or code generation (sqlc, testcontainers, River) unless the user asks for it.
 - **Hexagonal (full) project:** use the paths given in the reference.
 - Replace the existing implementation rather than running two side by side, unless the
   reference says to keep both (e.g. keep the in-memory store for unit tests when adding Postgres).

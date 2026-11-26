@@ -13,7 +13,8 @@ match what is already there and mention the difference instead of "fixing" it.
   below (interfaces at the consumer, typed errors, context, tests) — just fewer folders.
   Say in one line that you'd split into layers as it grows.
 - **Real service:** hexagonal layout below. Use `/go-api:new-project` to scaffold it.
-- Prefer the standard library. Reach for a dependency only when it clearly earns its place.
+- Prefer the standard library. Reach for a dependency only when it clearly earns its place —
+  but don't hand-roll what a well-known package already does well (see "Preferred packages").
 
 ## Layout (real services) — hexagonal, dependencies point inward
 
@@ -134,8 +135,7 @@ migrations/postgres/             # golang-migrate, NNNNNN_name.{up,down}.sql
   and cap attempts with backoff. Poll due rows with `FOR UPDATE SKIP LOCKED`. Periodic jobs must
   run on start or survive restarts — a 24h ticker restarts its countdown on every deploy.
 - **Security:** typed JWTs (access/refresh) with a session-version claim; API keys stored as
-  SHA-256; fail-closed admin secret; per-client rate limits (don't trust `X-Forwarded-For`
-  unless behind your own proxy).
+  SHA-256; fail-closed admin secret; per-client rate limits keyed on a trusted client IP.
 - **Observability:** one Prometheus registry passed through the container; metric labels use
   route patterns, never raw paths or IDs; `/health` (liveness) and `/ready` (DB ping).
 - **External providers:** port in core, adapter per vendor, mock chosen by env; webhooks are
@@ -146,6 +146,15 @@ migrations/postgres/             # golang-migrate, NNNNNN_name.{up,down}.sql
   timeout → retry (only if safe to repeat) → per-provider circuit breaker → bulkhead, with a
   fallback for non-essential dependencies. Postgres gets `statement_timeout`.
 
+## Preferred packages (details: `/go-api:infra packages`)
+
+sqlc (Postgres query code, pgx/v5) · testcontainers-go (integration tests on real Postgres) ·
+River (jobs) · caarlos0/env (config; invalid values fail startup) · go-chi/httprate (rate
+limits, keyed on a trusted client IP via chi `ClientIPFrom*`, never `RealIP`) · go-chi/cors ·
+sony/gobreaker/v2 · x/sync/singleflight. Keep: chi, pgx, golang-migrate, zerolog/slog,
+validator, golang-jwt, decimal, uuid, phonenumbers, prometheus, rapid. In an existing
+project, adopt them incrementally behind the existing ports.
+
 ## Testing
 
 - Black-box tests: `package xservice_test`. Test names `TestXService_Method_Condition_Result`.
@@ -155,8 +164,8 @@ migrations/postgres/             # golang-migrate, NNNNNN_name.{up,down}.sql
   invariants (parsing, money maths, normalisation).
 - Assert error *types* with `errors.As`, not messages.
 - Handlers: `httptest.NewRecorder` + real router/handler with fake services; assert status and envelope.
-- Integration tests behind `//go:build integration`, real Postgres from `TEST_DATABASE_URL`,
-  clean tables between tests with DELETE.
+- Integration tests behind `//go:build integration` on real Postgres (testcontainers-go, or
+  `TEST_DATABASE_URL` in CI), real migrations, tables cleaned between tests with DELETE.
 - Run `go test -race ./...` before calling work done.
 
 ## Before saying "done"

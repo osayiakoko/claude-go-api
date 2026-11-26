@@ -71,27 +71,32 @@ adapters, infrastructure, shared, migrations, cmd/api) and build each piece from
 
 - `cmd/api/main.go`: load config → init logger (debug console in a dev terminal, JSON
   otherwise) → `container.New(cfg)` → `Start()`.
-- `infrastructure/config`: typed `Config`, env loading with defaults, `Env` type with
+- `infrastructure/config`: typed `Config` parsed with caarlos0/env (`packages.md`): defaults,
+  `required` secrets, startup fails on invalid values; `Env` type with
   `IsDevelopment / IsProductionLike`.
 - `infrastructure/server`: `http.Server` with timeouts, SIGINT/SIGTERM graceful shutdown,
   `OnShutdown` hooks, a WaitGroup for background work, `ErrorLog` via the app logger.
-- **postgres.md**: `infrastructure/database` pool, `querier.go` + `transactor.go`, memory
-  package with a no-op transactor, migrations, docker-compose with a migrate service.
+- **postgres.md** + **packages.md**: `infrastructure/database` pool, `querier.go` +
+  `transactor.go`, repositories on **sqlc** (`sqlc.yaml`, `queries/`, generated `sqlcdb`),
+  migrations, docker-compose with a migrate service, integration tests on
+  **testcontainers-go**. Memory package only for a no-op transactor and DB-less dev.
 - **logger.md**: zerolog `Logger` interface, `WithCtx/FromCtx`, no-op logger, request-logging
   middleware with recursive redaction.
 - **http-kit.md**: response envelope + `HandleError` + internal-error capture, `Page[T]`,
   `ReadJSON/ReadQuery`, stateless validator, phone + money helpers.
-- **security.md**: JWT manager (access/refresh, session version), `Authenticate`, API-key
-  middleware, admin secret, rate limiter, CORS — only if the description mentions users/auth
-  or it's clearly a multi-user API; otherwise leave a TODO in the router.
+- **security.md** + **packages.md**: JWT manager (access/refresh, session version),
+  `Authenticate`, API-key middleware, admin secret, **httprate** with a trusted
+  `ClientIPFrom*` middleware, **go-chi/cors** — auth parts only if the description mentions
+  users/auth or it's clearly a multi-user API; otherwise leave a TODO in the router.
 - **observability.md**: Prometheus registry, HTTP metrics, `/health`, `/ready`, expvar.
 - **jobs.md**: `infrastructure/container/workers.go` using the `runEvery`-style worker helper
   (no jobs yet unless the description needs them).
 - `infrastructure/container`: `container.go`, `repos.go` (memory vs postgres via
   `USE_POSTGRES`), `services.go`, `handlers.go`, `workers.go`.
 - Makefile with: `help, build, run, dev (air), test, test-race, test-integration, cover, lint,
-  fmt, vet, tidy, swagger, migrate-create name=..., migrate-up, migrate-down, docker-up,
-  docker-down, docker-down-v, gen-apikey` (self-documenting `help` target as in lite).
+  fmt, vet, tidy, sqlc, generate (sqlc + swag), swagger, migrate-create name=..., migrate-up,
+  migrate-down, docker-up, docker-down, docker-down-v, gen-apikey` (self-documenting `help`
+  target as in lite). CI also runs `sqlc diff`.
 - `.env.example`, multi-stage `Dockerfile` (distroless or alpine, non-root user),
   `docker-compose.yml` (db + migrate + api), `.golangci.yml`, `.air.toml`,
   `.github/workflows/ci.yml` (race tests, migrations, integration tests), and a project

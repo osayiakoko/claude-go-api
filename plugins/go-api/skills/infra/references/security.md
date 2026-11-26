@@ -247,7 +247,11 @@ func RequireAdminSecret(secret string) func(http.Handler) http.Handler {
 
 Never compare secrets, signatures or hashes with `==`/`!=`.
 
-## Rate limiting (per client, token bucket)
+## Rate limiting
+
+**Prefer `go-chi/httprate`** with a trusted client-IP middleware (`ClientIPFrom*`) — setup in
+`packages.md`. The hand-rolled limiter below is only for projects that can't take the
+dependency; it has the same client-IP caveat.
 
 ```go
 type RateLimiter struct {
@@ -311,22 +315,23 @@ func (rl *RateLimiter) Middleware(keyFn func(*http.Request) string) func(http.Ha
 ```
 
 **Client IP:** `chi/middleware.RealIP` trusts `X-Forwarded-For`/`X-Real-IP` from anyone, so a
-caller can rotate a fake IP per request and bypass per-IP limits. Only use it when the app is
-reachable **only** through your proxy/load balancer and that proxy overwrites those headers;
-otherwise key on `r.RemoteAddr`. Prefer keying authenticated routes by user ID, and give
+caller can rotate a fake IP per request and bypass per-IP limits. Use exactly one of chi's
+`middleware.ClientIPFrom*` (v5.3.0+) matched to your deployment and read the result with
+`middleware.GetClientIP(ctx)` — see `packages.md`. Prefer keying authenticated routes by user ID, and give
 OTP/login/PIN endpoints their own stricter limiter (e.g. 5/min per phone number + per IP).
 With several instances, use a shared store (Redis) or limit at the gateway.
 
 ## CORS and headers
 
-Allow-list origins from config (`CORS_TRUSTED_ORIGINS`); never `*` with credentials. Set
+Use `go-chi/cors` (config in `packages.md`). Allow-list origins from config
+(`CORS_TRUSTED_ORIGINS`); never `*` with credentials. Set
 `Vary: Origin`. Add `X-Content-Type-Options: nosniff` and `Cache-Control: no-store` on
 authenticated JSON responses.
 
 ## Router wiring order
 
 ```go
-// Add chimw.RealIP after RequestID ONLY when behind a trusted proxy (see above).
+// Add ONE chimw.ClientIPFrom* after RequestID, matched to your deployment (see packages.md).
 r.Use(middleware.Recoverer(log), chimw.RequestID,
 	middleware.RequestLogger(log, isProd), chimw.Timeout(60*time.Second),
 	middleware.CORS(cfg.Cors.TrustedOrigins), middleware.Metrics(reg))

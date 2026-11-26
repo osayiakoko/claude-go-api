@@ -28,7 +28,7 @@ Run `/go-api:help` inside Claude Code to print this list.
 | `/go-api:new-project [lite\|full] [module-path] [description]` | Scaffold a new Go API | You only |
 | `/go-api:add-resource [name] [fields / behaviour]` | Add an entity through every layer, with tests | You, or Claude when you ask for a new resource |
 | `/go-api:review [path \| package \| git range]` | Review Go changes against the conventions | You, or Claude when you ask for a review |
-| `/go-api:infra [topic] [instructions]` | Add/upgrade postgres, logger, cache, jobs, security, observability, http-kit, external, resilience | You, or Claude when you ask for any of these |
+| `/go-api:infra [topic] [instructions]` | Add/upgrade postgres, logger, cache, jobs, security, observability, http-kit, external, resilience, packages | You, or Claude when you ask for any of these |
 
 Short forms (`/new-project`, `/add-resource`, `/review`) work when no other command has the
 same name. The formatting hook has no command; it runs after every `.go` edit.
@@ -48,7 +48,7 @@ same name. The formatting hook has no command; it runs after every `.go` edit.
 /go-api:add-resource savings-goal "target amount, saved amount, deadline; owner-only access"
 /go-api:add-resource webhook-subscription "url, secret, events []string; HMAC-signed delivery with retries"
 
-# Infrastructure (topics: postgres, logger, cache, jobs, security, observability, http-kit, external, resilience, all)
+# Infrastructure (topics: postgres, logger, cache, jobs, security, observability, http-kit, external, resilience, packages, all)
 /go-api:infra postgres                              # swap the in-memory store for Postgres
 /go-api:infra logger                                # replace slog with zerolog in a lite project
 /go-api:infra cache "cache users and plans for 5 minutes"
@@ -59,6 +59,8 @@ same name. The formatting hook has no command; it runs after every `.go` edit.
 /go-api:infra external "Paystack payments with webhook verification"
 /go-api:infra resilience "idempotency keys on POST /transactions and /debts/repay"
 /go-api:infra resilience "timeouts, retries and a circuit breaker around WhatsApp and SMS"
+/go-api:infra packages "move the category repository to sqlc"
+/go-api:infra packages "run integration tests with testcontainers"
 /go-api:infra "add zerolog and Postgres"
 
 # Review
@@ -78,14 +80,14 @@ same name. The formatting hook has no command; it runs after every `.go` edit.
 ## Install on a new machine
 
 ```bash
-git clone https://github.com/<your-github-username>/claude-go-api.git ~/claude-go-api
+git clone https://github.com/osayiakoko/claude-go-api.git ~/claude-go-api
 ~/claude-go-api/install.sh
 ```
 
 Then inside Claude Code:
 
 ```
-/plugin marketplace add <your-github-username>/claude-go-api
+/plugin marketplace add osayiakoko/claude-go-api
 /plugin install go-api@osayi-claude
 ```
 
@@ -97,8 +99,13 @@ listed under rules. Type `/go-api:` to see the skills.
 - Rules: edit `rules/go-api.md`, commit, push. On other machines `git pull` (the symlink picks it up).
 - Plugin: add an entry to [`CHANGELOG.md`](CHANGELOG.md), bump `version` in
   `plugins/go-api/.claude-plugin/plugin.json` (semantic versioning — see the changelog header),
-  commit, `git tag go-api-vX.Y.Z`, `git push --follow-tags`, then
-  `/plugin marketplace update osayi-claude` and `/reload-plugins` on each machine.
+  commit, then tag and push:
+
+  ```bash
+  git tag -a go-api-vX.Y.Z -m "go-api X.Y.Z"   # annotated: --follow-tags only pushes these
+  git push --follow-tags
+  ```
+  Then `/plugin marketplace update osayi-claude` and `/reload-plugins` on each machine.
 
 ## Per-project overrides
 
