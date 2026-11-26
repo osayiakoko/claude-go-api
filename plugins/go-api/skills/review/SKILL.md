@@ -10,7 +10,19 @@ Read the changed code and enough surrounding code to judge it. Check, in this pr
 
 1. **Correctness & data safety** — logic bugs, missing ownership/authorisation checks,
    nil dereferences, money as `float64`, SQL built from input, transactions that don't cover
-   all the writes, repo methods using `r.pool` directly instead of `getQuerier` (escapes the tx).
+   all the writes that must succeed together.
+   - **`r.pool` vs `getQuerier`** — only a *must fix* when you can show the repository method
+     is reached from inside a `Transactor.WithTx` closure (directly or through a service call)
+     AND either (a) it writes, so the write escapes the rollback, or (b) it reads rows the same
+     transaction has already written, so it sees stale data. Trace the call path and name the
+     `WithTx` site in the finding.
+   - Reads through `r.pool` inside a transaction that don't depend on the transaction's own
+     writes (e.g. seeded or cached lookups) are fine for correctness — mention them once,
+     grouped, as *nice to have* (they take a second pool connection while the tx holds one).
+   - Outside any transaction, `r.pool` is a consistency note, not a defect. Don't list each
+     occurrence; one grouped line with a count is enough.
+   - Optimistic-lock conflicts (`WHERE version = $n` matching no rows) should surface as a
+     conflict (409), not `ErrNotFound` (404). Flag it if you see it.
 2. **Errors** — ignored errors, string-matching errors, raw infra errors leaking to clients,
    handlers choosing status codes instead of `response.HandleError`, missing `%w` wrapping.
 3. **Concurrency & lifecycle** — goroutines without an exit path or ctx, shared maps without
