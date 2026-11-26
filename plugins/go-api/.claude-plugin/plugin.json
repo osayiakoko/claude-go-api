@@ -1,6 +1,6 @@
 {
   "name": "go-api",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Skills for scaffolding, extending, reviewing and adding infrastructure to Go HTTP APIs, plus gofmt on every edit",
   "author": {
     "name": "Osayi Akoko"

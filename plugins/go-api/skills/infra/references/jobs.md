@@ -17,6 +17,80 @@ be reliable and observable.
 All in-process workers: own them in `container/workers.go`, run them on the server's
 WaitGroup, stop them via the shared background ctx that is cancelled on shutdown.
 
+## Working with an existing scheduler
+
+Before adding anything, inventory what the project already does:
+
+```bash
+grep -rn "time.NewTicker\|time.Tick(\|RunOnce\|scheduled_jobs\|river\.\|go.temporal.io\|go func()" --include=*.go .
+```
+
+Then, for each job, record: trigger (ticker / request / webhook), interval, whether it must run
+exactly once, whether it has side effects users or money can see, and how it fails today.
+
+Migration rules:
+- **Keep** what is sound: tickers doing idempotent housekeeping, a working `RunOnce`. Fix their
+  pitfalls (below) in place rather than replacing them.
+- **Add** River (or Temporal) *alongside* for the jobs that need it — usually request-triggered
+  notifications and anything with retries — and move **one job type per change**, with tests.
+- Don't run the same job through two mechanisms at once; switch the trigger over in the same
+  change that adds the new worker.
+- Leave a short `docs/background-jobs.md` table: job, mechanism, interval/trigger, idempotent?, owner.
+
+## Pitfalls to fix wherever you see them
+
+| Pitfall | Why it bites | Fix |
+|---|---|---|
+| `go func(){ ... }()` in a handler or service | No `recover` → a panic kills the whole process (chi's recoverer only covers the request goroutine); not waited for on shutdown; errors dropped; lost on restart | Enqueue a River job with `InsertTx`, or at minimum run via the tracked background helper (WaitGroup + recover + timeout ctx + log/metric) |
+| Side effect first, bookkeeping second (send WhatsApp → then advance `remind_at`) | If the update fails or the process dies in between, the effect repeats — every tick | Claim/mark first (`status='sending'`, `last_attempt_at`, `attempts+1`) in a short tx, then send, then mark done; or let the job queue own it |
+| Retrying forever (failing send re-picked every minute) | Hammers the provider, floods logs, can get your sender blocked | `attempts`, `max_attempts`, `next_attempt_at` with exponential backoff; park as `failed` and alert |
+| Polling due rows without locking | Two instances both pick and process every row | Claim with `FOR UPDATE SKIP LOCKED` (below) |
+| `time.NewTicker(24*time.Hour)` started at boot | First run is 24h after each start; frequent deploys mean it never runs | `RunOnStart: true`, or an hourly tick that checks "is it due?" (+ `RunOnce` per day slot when it must run once) |
+| `RunOnce` claim only from `pending`/`failed` | A crash mid-run leaves the slot `running` forever | Lease-based reclaim (see RunOnce below) |
+| Non-idempotent job body | Every mechanism here is at-least-once | Upserts, unique constraints, provider idempotency keys, "already sent" checks |
+
+### Claiming due rows safely (multi-instance polling)
+
+```go
+// ClaimDue atomically claims up to limit due reminders for this worker. Other instances
+// skip the locked rows instead of waiting, so no row is processed twice.
+func (r *reminderRepository) ClaimDue(ctx context.Context, now time.Time, limit int) ([]*reminderdomain.Reminder, error) {
+	q := getQuerier(ctx, r.pool) // one statement, so it's atomic on its own
+	rows, err := q.Query(ctx, `
+		UPDATE reminders
+		SET    status = 'sending', attempts = attempts + 1, last_attempt_at = $1
+		WHERE  id IN (
+			SELECT id FROM reminders
+			WHERE  active AND status = 'pending' AND remind_at <= $1
+			  AND  attempts < max_attempts
+			  AND  (next_attempt_at IS NULL OR next_attempt_at <= $1)
+			ORDER BY remind_at
+			LIMIT $2
+			FOR UPDATE SKIP LOCKED
+		)
+		RETURNING id, debt_id, account_id, remind_at, frequency, attempts
+	`, now, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*reminderdomain.Reminder
+	for rows.Next() {
+		var rm reminderdomain.Reminder
+		if err := rows.Scan(&rm.ID, &rm.DebtID, &rm.AccountID, &rm.RemindAt, &rm.Frequency, &rm.Attempts); err != nil {
+			return nil, err
+		}
+		out = append(out, &rm)
+	}
+	return out, rows.Err()
+}
+```
+
+After sending: success → advance `remind_at` (or deactivate) and set `status='pending'`,
+`attempts=0`; failure → `status='pending'`, `next_attempt_at = now + backoff(attempts)`, or
+`status='failed'` once `attempts >= max_attempts`. Add a sweeper that resets rows stuck in
+`sending` longer than a lease. (River gives you all of this per job without the extra columns.)
+
 ## 1. Ticker worker helper — `internal/shared/worker/run_every.go`
 
 Removes the copy-pasted ticker/select/panic/metrics block per worker.

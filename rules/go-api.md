@@ -127,7 +127,12 @@ migrations/postgres/             # golang-migrate, NNNNNN_name.{up,down}.sql
   in-memory only for single-instance, Redis otherwise; never cache balances/payment state.
 - **Jobs:** ticker workers for idempotent housekeeping; `RunOnce` + `scheduled_jobs` (with a
   lease so crashed runs are reclaimed) for once-per-slot schedules; River for queued work
-  enqueued in the same transaction; Temporal for long multi-step processes.
+  enqueued in the same transaction; Temporal for long multi-step processes. In a project
+  that already has a scheduler, extend it — keep what works and migrate one job type at a time.
+- **Job safety:** no bare `go func()` in request paths (enqueue a job, or use the tracked
+  background helper with recover). Claim/record work *before* the side effect (send, charge)
+  and cap attempts with backoff. Poll due rows with `FOR UPDATE SKIP LOCKED`. Periodic jobs must
+  run on start or survive restarts — a 24h ticker restarts its countdown on every deploy.
 - **Security:** typed JWTs (access/refresh) with a session-version claim; API keys stored as
   SHA-256; fail-closed admin secret; per-client rate limits (don't trust `X-Forwarded-For`
   unless behind your own proxy).

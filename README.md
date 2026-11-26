@@ -93,8 +93,10 @@ listed under rules. Type `/go-api:` to see the skills.
 ## Update
 
 - Rules: edit `rules/go-api.md`, commit, push. On other machines `git pull` (the symlink picks it up).
-- Plugin: bump `version` in `plugins/go-api/.claude-plugin/plugin.json`, push, then
-  `/plugin marketplace update osayi-claude` on each machine.
+- Plugin: add an entry to [`CHANGELOG.md`](CHANGELOG.md), bump `version` in
+  `plugins/go-api/.claude-plugin/plugin.json` (semantic versioning — see the changelog header),
+  commit, `git tag go-api-vX.Y.Z`, `git push --follow-tags`, then
+  `/plugin marketplace update osayi-claude` and `/reload-plugins` on each machine.
 
 ## Per-project overrides
 

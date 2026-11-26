@@ -26,11 +26,25 @@ Read the changed code and enough surrounding code to judge it. Check, in this pr
 2. **Errors** — ignored errors, string-matching errors, raw infra errors leaking to clients,
    handlers choosing status codes instead of `response.HandleError`, missing `%w` wrapping.
 3. **Concurrency & lifecycle** — goroutines without an exit path or ctx, shared maps without
-   locks, `context.Background()` inside request paths, ctx stored in structs.
-4. **Layering** — core importing adapters/pgx/chi/net/http, concrete types constructed outside
+   locks, `context.Background()` inside request paths, ctx stored in structs, per-request data
+   stored on shared structs (validators, handlers, services).
+4. **Background jobs** — check every ticker, worker, job and `go func()`:
+   - bare `go func()` in a handler/service: no `recover` (a panic kills the process), not
+     tracked by the shutdown WaitGroup, errors discarded, lost on restart → *must fix*;
+     suggest the tracked background helper or a River job enqueued in the same tx.
+   - side effect before bookkeeping (send/charge, *then* mark sent/advance): a failed update
+     or crash repeats the side effect → *must fix* when the effect is user-visible or financial.
+   - retries with no attempt cap or backoff (e.g. a failing send retried every tick forever).
+   - polling due rows without `FOR UPDATE SKIP LOCKED` / a claim step: duplicates with more
+     than one instance.
+   - long tickers (`24*time.Hour`) with no run-on-start: they restart their countdown on every
+     deploy and may never fire.
+   - `RunOnce`-style claims that can't reclaim a job stuck in `running` (no lease).
+   - jobs that aren't idempotent although the mechanism can run them twice.
+5. **Layering** — core importing adapters/pgx/chi/net/http, concrete types constructed outside
    the container, domain structs returned from handlers instead of DTOs.
-5. **Tests** — new behaviour without tests, error-type assertions missing, no race run.
-6. **Style** — naming, missing doc comments on exported port methods, gofmt.
+6. **Tests** — new behaviour without tests, error-type assertions missing, no race run.
+7. **Style** — naming, missing doc comments on exported port methods, gofmt.
 
 Run `go vet ./...` and `go test -race ./...` on the affected packages if possible.
 

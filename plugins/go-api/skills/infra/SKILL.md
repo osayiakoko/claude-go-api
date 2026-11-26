@@ -34,6 +34,10 @@ If the argument is a phrase rather than a topic name ("add zerolog", "switch to 
 - **Hexagonal (full) project:** use the paths given in the reference.
 - Replace the existing implementation rather than running two side by side, unless the
   reference says to keep both (e.g. keep the in-memory store for unit tests when adding Postgres).
+- **Exception — jobs:** never rip out a working scheduler. Inventory what exists first
+  (tickers, `RunOnce`/`scheduled_jobs`, River, Temporal, ad-hoc `go func()`), keep what's
+  sound, fix its pitfalls, and add new mechanisms alongside, migrating one job type at a time.
+  See "Working with an existing scheduler" in `references/jobs.md`.
 - Use the module path from `go.mod` in imports.
 
 ## 3. Finish
