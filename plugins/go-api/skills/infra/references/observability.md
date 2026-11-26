@@ -63,8 +63,9 @@ const (
 )
 
 type ExternalMetrics struct {
-	errors  *prometheus.CounterVec
-	latency *prometheus.HistogramVec
+	errors   *prometheus.CounterVec
+	latency  *prometheus.HistogramVec
+	breakers *prometheus.GaugeVec
 }
 
 func NewExternalMetrics(reg prometheus.Registerer) *ExternalMetrics {
@@ -75,9 +76,18 @@ func NewExternalMetrics(reg prometheus.Registerer) *ExternalMetrics {
 		latency: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Name: "external_api_duration_seconds", Help: "Outbound API latency.",
 		}, []string{"provider", "operation"}),
+		breakers: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "circuit_breaker_state", Help: "0 closed, 1 half-open, 2 open.",
+		}, []string{"breaker"}),
 	}
-	reg.MustRegister(m.errors, m.latency)
+	reg.MustRegister(m.errors, m.latency, m.breakers)
 	return m
+}
+
+func (m *ExternalMetrics) SetBreakerState(name string, state int) {
+	if m != nil {
+		m.breakers.WithLabelValues(name).Set(float64(state))
+	}
 }
 
 // nil-safe so tests can pass nil.

@@ -1,7 +1,7 @@
 ---
 name: infra
-description: Add or upgrade infrastructure in a Go API — Postgres (pgxpool, transactions, migrations), zerolog logger, caching, background jobs (tickers, RunOnce, River, Temporal), JWT/API-key auth and rate limiting, Prometheus metrics, HTTP helpers (response envelope, pagination, validation), and external provider integrations. Use when asked to set up, add, switch to or improve any of these.
-argument-hint: "[postgres|logger|cache|jobs|security|observability|http-kit|external|all] [extra instructions]"
+description: Add or upgrade infrastructure in a Go API — Postgres (pgxpool, transactions, migrations), zerolog logger, caching, background jobs (tickers, RunOnce, River, Temporal), JWT/API-key auth and rate limiting, Prometheus metrics, HTTP helpers (response envelope, pagination, validation), external provider integrations, and resilience (timeouts, idempotency keys, retries, circuit breakers, bulkheads). Use when asked to set up, add, switch to or improve any of these.
+argument-hint: "[postgres|logger|cache|jobs|security|observability|http-kit|external|resilience|all] [extra instructions]"
 ---
 
 Task: $ARGUMENTS
@@ -21,6 +21,7 @@ the task needs (they are long):
 | observability | `references/observability.md` | Prometheus registry, HTTP/worker/external metrics, health, expvar |
 | http-kit | `references/http-kit.md` | response envelope + HandleError, pagination, ReadJSON/ReadQuery, validator wrapper, phone + money formatting |
 | external | `references/external.md` | third-party provider ports, real vs mock by env, HTTP client timeouts, webhooks (signature + dedup) |
+| resilience | `references/resilience.md` | timeouts (HTTP, server, Postgres, workers), idempotency keys for POSTs, atomic check-then-act, retries with backoff + jitter, circuit breakers, bulkheads, load shedding, graceful degradation, singleflight |
 
 If the argument is a phrase rather than a topic name ("add zerolog", "switch to postgres",
 "add JWT auth"), map it to the topic(s). `all` = every topic, in the order listed.

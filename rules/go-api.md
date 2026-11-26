@@ -140,6 +140,11 @@ migrations/postgres/             # golang-migrate, NNNNNN_name.{up,down}.sql
   route patterns, never raw paths or IDs; `/health` (liveness) and `/ready` (DB ping).
 - **External providers:** port in core, adapter per vendor, mock chosen by env; webhooks are
   signature-checked, deduplicated by event ID, acknowledged fast and processed async.
+- **Resilience:** POST endpoints that create money-relevant records require an
+  `Idempotency-Key`. State transitions are atomic (`UPDATE ... WHERE status = 'pending'
+  RETURNING` inside the tx), never read-check-then-write. Outbound calls go through
+  timeout → retry (only if safe to repeat) → per-provider circuit breaker → bulkhead, with a
+  fallback for non-essential dependencies. Postgres gets `statement_timeout`.
 
 ## Testing
 

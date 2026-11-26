@@ -41,10 +41,21 @@ Read the changed code and enough surrounding code to judge it. Check, in this pr
      deploy and may never fire.
    - `RunOnce`-style claims that can't reclaim a job stuck in `running` (no lease).
    - jobs that aren't idempotent although the mechanism can run them twice.
-5. **Layering** — core importing adapters/pgx/chi/net/http, concrete types constructed outside
+5. **Resilience** —
+   - outbound `http.Client` without a timeout (`&http.Client{}`, `http.DefaultClient`), or
+     requests without ctx → *must fix* (a hung provider hangs the caller/worker forever).
+   - read-check-then-write state transitions (webhook confirm, status changes) outside a
+     transaction or without a conditional `UPDATE ... WHERE status = ...` → *must fix* when
+     money/subscriptions are involved (concurrent deliveries double-apply).
+   - POST endpoints creating money-relevant records with no idempotency key → flag.
+   - retries on non-idempotent provider calls, retries without backoff/cap, or retries
+     stacked across layers.
+   - no circuit breaker / bulkhead around a provider called on a hot path → nice to have,
+     unless the review shows it can exhaust goroutines or the DB pool.
+6. **Layering** — core importing adapters/pgx/chi/net/http, concrete types constructed outside
    the container, domain structs returned from handlers instead of DTOs.
-6. **Tests** — new behaviour without tests, error-type assertions missing, no race run.
-7. **Style** — naming, missing doc comments on exported port methods, gofmt.
+7. **Tests** — new behaviour without tests, error-type assertions missing, no race run.
+8. **Style** — naming, missing doc comments on exported port methods, gofmt.
 
 Run `go vet ./...` and `go test -race ./...` on the affected packages if possible.
 

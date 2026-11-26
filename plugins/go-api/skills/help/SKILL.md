@@ -16,7 +16,7 @@ $ARGUMENTS, answering that question.
 | `/go-api:new-project [lite\|full] [module-path] [description]` | Scaffold a new Go API |
 | `/go-api:add-resource [name] [fields / behaviour]` | Add an entity through every layer, with tests |
 | `/go-api:review [path \| package \| git range]` | Review Go changes against the conventions |
-| `/go-api:infra [topic] [instructions]` | Add or upgrade infrastructure: postgres, logger, cache, jobs, security, observability, http-kit, external |
+| `/go-api:infra [topic] [instructions]` | Add or upgrade infrastructure: postgres, logger, cache, jobs, security, observability, http-kit, external, resilience |
 
 The short forms (`/new-project`, `/add-resource`, `/review`) also work when no other
 command uses the same name. Formatting runs automatically: every `.go` file Claude writes or
@@ -61,7 +61,7 @@ Claude may also use this automatically when you ask it to review Go code.
 
 ## /go-api:infra
 
-Topics: `postgres` · `logger` · `cache` · `jobs` · `security` · `observability` · `http-kit` · `external` · `all`.
+Topics: `postgres` · `logger` · `cache` · `jobs` · `security` · `observability` · `http-kit` · `external` · `resilience` · `all`.
 A plain-English request works too — Claude maps it to the right topic.
 
 ```
@@ -75,6 +75,9 @@ A plain-English request works too — Claude maps it to the right topic.
 /go-api:infra observability
 /go-api:infra http-kit "add pagination and sortable list endpoints"
 /go-api:infra external "Paystack payments with webhook verification"
+/go-api:infra resilience "idempotency keys on POST /transactions and /debts/repay"
+/go-api:infra resilience "timeouts, retries and a circuit breaker around WhatsApp and SMS"
+/go-api:infra resilience "make payment webhook confirmation atomic"
 /go-api:infra "add zerolog and Postgres"       # several topics at once
 ```
 

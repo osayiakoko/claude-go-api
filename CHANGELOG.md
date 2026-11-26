@@ -12,6 +12,36 @@ To release: update this file, bump `version` in `plugins/go-api/.claude-plugin/p
 commit, tag (`git tag go-api-vX.Y.Z`), push with `--tags`, then run
 `/plugin marketplace update osayi-claude` and `/reload-plugins`.
 
+## [1.4.0] — 2026-11-26
+
+Resilience, from a review of TrakDip's payment, webhook and provider code.
+
+### Added
+- `/go-api:infra resilience` (`references/resilience.md`):
+  - Timeouts: tuned per-provider `http.Client`, server timeouts, Postgres `statement_timeout`
+    and `idle_in_transaction_session_timeout`, per-run worker deadlines.
+  - Idempotency-key middleware for POSTs (409 while in progress, replay of the stored
+    response, 422 on key reuse with a different body, key released on 5xx), with an in-memory
+    store for tests and a Postgres store with lease takeover — tested, including under `-race`.
+  - Atomic check-then-act for webhooks/state transitions (`UPDATE ... WHERE status = 'pending'
+    RETURNING` in one tx) plus a partial unique index as a database guard.
+  - `Retry` helper with exponential backoff, full jitter, `Retry-After` support and an HTTP
+    retryability classifier — tested.
+  - Circuit breakers with `sony/gobreaker/v2` (per provider, 4xx doesn't trip, state metric,
+    fallback) and the composition order bulkhead → breaker → retry → timeout → call.
+  - `Bulkhead` and `LoadShed` middleware — tested.
+  - Graceful degradation guidance and `singleflight` for cache stampedes.
+- `circuit_breaker_state` gauge in `observability.md`.
+- `/go-api:review` has a "Resilience" item (missing timeouts, non-atomic transitions,
+  POSTs without idempotency keys, unsafe or stacked retries, missing breakers/bulkheads).
+
+### Changed
+- **Rules:** new "Resilience" line (idempotency keys on money-relevant POSTs, atomic state
+  transitions, timeout → retry → breaker → bulkhead for outbound calls, Postgres
+  `statement_timeout`).
+- `/go-api:help` and README list the `resilience` topic with examples.
+- `/go-api:review` checklist renumbered (Resilience is item 5).
+
 ## [1.3.0] — 2026-11-26
 
 Background-job awareness, from a review of TrakDip's workers.
@@ -93,6 +123,7 @@ Background-job awareness, from a review of TrakDip's workers.
   - Hook: `goimports`/`gofmt` on every `.go` file Claude writes or edits.
 - `install.sh` — links the rules into `~/.claude/rules/`.
 
+[1.4.0]: https://github.com/<your-github-username>/claude-go-api/compare/go-api-v1.3.0...go-api-v1.4.0
 [1.3.0]: https://github.com/<your-github-username>/claude-go-api/compare/go-api-v1.2.0...go-api-v1.3.0
 [1.2.0]: https://github.com/<your-github-username>/claude-go-api/compare/go-api-v1.1.0...go-api-v1.2.0
 [1.1.0]: https://github.com/<your-github-username>/claude-go-api/compare/go-api-v1.0.0...go-api-v1.1.0

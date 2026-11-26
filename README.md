@@ -28,7 +28,7 @@ Run `/go-api:help` inside Claude Code to print this list.
 | `/go-api:new-project [lite\|full] [module-path] [description]` | Scaffold a new Go API | You only |
 | `/go-api:add-resource [name] [fields / behaviour]` | Add an entity through every layer, with tests | You, or Claude when you ask for a new resource |
 | `/go-api:review [path \| package \| git range]` | Review Go changes against the conventions | You, or Claude when you ask for a review |
-| `/go-api:infra [topic] [instructions]` | Add/upgrade postgres, logger, cache, jobs, security, observability, http-kit, external | You, or Claude when you ask for any of these |
+| `/go-api:infra [topic] [instructions]` | Add/upgrade postgres, logger, cache, jobs, security, observability, http-kit, external, resilience | You, or Claude when you ask for any of these |
 
 Short forms (`/new-project`, `/add-resource`, `/review`) work when no other command has the
 same name. The formatting hook has no command; it runs after every `.go` edit.
@@ -48,7 +48,7 @@ same name. The formatting hook has no command; it runs after every `.go` edit.
 /go-api:add-resource savings-goal "target amount, saved amount, deadline; owner-only access"
 /go-api:add-resource webhook-subscription "url, secret, events []string; HMAC-signed delivery with retries"
 
-# Infrastructure (topics: postgres, logger, cache, jobs, security, observability, http-kit, external, all)
+# Infrastructure (topics: postgres, logger, cache, jobs, security, observability, http-kit, external, resilience, all)
 /go-api:infra postgres                              # swap the in-memory store for Postgres
 /go-api:infra logger                                # replace slog with zerolog in a lite project
 /go-api:infra cache "cache users and plans for 5 minutes"
@@ -57,6 +57,8 @@ same name. The formatting hook has no command; it runs after every `.go` edit.
 /go-api:infra jobs "loan disbursement workflow with Temporal"
 /go-api:infra security "JWT access/refresh tokens, API key for client apps, rate limit login"
 /go-api:infra external "Paystack payments with webhook verification"
+/go-api:infra resilience "idempotency keys on POST /transactions and /debts/repay"
+/go-api:infra resilience "timeouts, retries and a circuit breaker around WhatsApp and SMS"
 /go-api:infra "add zerolog and Postgres"
 
 # Review
